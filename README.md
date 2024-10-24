@@ -37,7 +37,9 @@ dockerhub:latest
 ```
 - - -
 **Tip**
+
 You can mount the /data volume if you want the cert files.
+
 -v /path/to/data:/data
 - - -
 If your 443 and 80 ports are already occupied and you cannot apply for an automatic HTTPS certificate,
@@ -105,7 +107,7 @@ dockerhub:latest
 so we disabled HTTP traffic. If you use HTTP, the dockerhub-reverse-proxy will not be successful.
 It is best to enable HTTPS through a front-end reverse proxy.**
 ```sh
-docker run -d --name=dockerhub-reverse-proxy \
+$ docker run -d --name=dockerhub-reverse-proxy \
 -p HTTPS_PORT:443 -p HTTP_PORT:80 \
 -e DOWNSTREAM=$YOUR_DOMAIN \
 -e TLS_METHOD=none  \
