@@ -1,46 +1,22 @@
-# because of the entry.sh , all the envireonments on the file are legal.
-{
-    email {$TLS_EMAIL}
-    # HTTP-Challenge
-    @useHTTP {
-        expression {env.TLS_METHOD} == "http"
-    }
-    # DisableAutoTLS
-    @disableTLS {
-        expression {env.TLS_METHOD} == "none"
-    }
-    # DNS-Challenge
-    @useDNS {
-        expression {env.TLS_METHOD} == "dns"
-    }
-
-    tls @useDNS {
-        dns cloudflare {$TLS_API_TOKEN}
-    }
-    tls @useHTTP {
-        issuer acme {
-            email {$TLS_EMAIL}
-        }
-    }
-    auto_https off @disableTLS
-}
-
-:443, {$DOWNSTREAM_REGISTRY} {
+{$DOWNSTREAM_REGISTRY} {
+    __TLS_CONFIGURE
     reverse_proxy {$UPSTREAM_REGISTRY} {
         header_up Host {http.reverse_proxy.upstream.hostport}
-        header_down WWW-Authenticate {$UPSTREAM_AUTH} {$SCHEME}{$DOWNSTREAM_AUTH}
-        header_down Location {$UPSTREAM_PRODUCTION} {$SCHEME}{$DOWNSTREAM_PRODUCTION}
+        header_down WWW-Authenticate {$UPSTREAM_AUTH} {$SCHEME}://{$DOWNSTREAM_AUTH}
+        header_down Location {$UPSTREAM_PRODUCTION} {$SCHEME}://{$DOWNSTREAM_PRODUCTION}
     }
 }
 
-:443, {$DOWNSTREAM_AUTH}{
-        reverse_proxy {$UPSTREAM_AUTH} {
-                header_up Host {http.reverse_proxy.upstream.hostport}
-        }
+{$DOWNSTREAM_AUTH} {
+    __TLS_CONFIGURE
+    reverse_proxy {$UPSTREAM_AUTH} {
+            header_up Host {http.reverse_proxy.upstream.hostport}
+    }
 }
 
-:443, {$DOWNSTREAM_PRODUCTION} {
-        reverse_proxy {$UPSTREAM_PRODUCTION} {
-                header_up Host {http.reverse_proxy.upstream.hostport}
-        }
+{$DOWNSTREAM_PRODUCTION} {
+    __TLS_CONFIGURE
+    reverse_proxy {$UPSTREAM_PRODUCTION} {
+            header_up Host {http.reverse_proxy.upstream.hostport}
+    }
 }

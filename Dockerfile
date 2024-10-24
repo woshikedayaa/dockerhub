@@ -1,34 +1,39 @@
-FROM caddy:builder as builder
+FROM caddy:builder AS build
 # Build with cloudflare DNS plugin
 
 RUN xcaddy build --with github.com/caddy-dns/cloudflare
 
-FROM caddy:latest
-WORKDIR /app
-COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+FROM caddy:latest AS production
+COPY --from=build /usr/bin/caddy /usr/bin/caddy
 
 # http,dns,none
 # use none to disable auto https.
 ENV TLS_METHOD="http"
 ENV TLS_EMAIL=""
-ENV TLS_API_TOKEN=""
+
+# Passthrough the DNS token Via the /config/.env
+# ENV TLS_API_TOKEN=""
 ENV UPSTREAM_REGISTRY="https://registry-1.docker.io"
 ENV UPSTREAM_AUTH="https://auth.docker.io"
 ENV UPSTREAM_PRODUCTION="https://production.cloudflare.docker.com"
+
 # set up the downsteam domain, It should be your domain. without http or https scheme.
 # e.g. example.org, example.com
 ENV DOWNSTREAM=""
-# if any value was be set in the below three environment variables, the DOWNSTREAM environment variable will be departeched.
+# if any value was be set in the below three environment variables,
+# the DOWNSTREAM environment variable will be departeched.
 ENV DOWNSTREAM_REGISTRY=""
 ENV DOWNSTREAM_AUTH=""
 ENV DOWNSTREAM_PRODUCTION=""
 
-ENV LISTEN_ADDRESS=""
-
 COPY Caddyfile /etc/caddy/Caddyfile
-
-VOLUME /etc/caddy/Caddy
-
+COPY entry.sh /entry.sh
+RUN <<EOF
+/bin/chmod +x /entry.sh
+EOF
+VOLUME /etc/caddy
+VOLUME /data
+VOLUME /config
 EXPOSE 80 443
 
-CMD ["entry.sh"]
+ENTRYPOINT ["/app/entry.sh"]
