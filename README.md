@@ -35,6 +35,14 @@ $ docker run -d --name=dockerhub-reverse-proxy \
 -v ${HOME}/caddy-data:/data \
 dockerhub:latest
 ```
+If deployed successfully, Use it on your docker client side.
+```sh
+sudo tee /etc/docker/daemon.json <<HERE
+{
+    "registry-mirrors": ["https://$YOUR_DOMAIN/"]
+}
+HERE
+```
 - - -
 **Tip**
 
