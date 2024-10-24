@@ -1,12 +1,21 @@
-# dockerhub
+# Dockerhub Caddy reverser proxy
 dockerhub reverser proxy image.
+
+# Before read
+**We strongly recommend HTTPS, so we have enforced HTTPS in some ways.
+Using HTTP on the public network is very dangerous.**
 
 # Usage
 ## Build image.
-```bash
+```sh
 $ git clone https://github.com/woshikedayaa/dockerhub.git --depth=1 --branch=main
 $ cd dockerhub
 $ docker build -t dockerhub:latest -f Dockerfile .
+# Build with dns01-challenge support.
+# $YOUR_DNS_PROVIDER e.g. cloudflare...
+# should be supported by caddy officially.
+# See repo: https://github.com/orgs/caddy-dns/repositories
+$ docker build -t dockerhub:latest -f Dockerfile.dns --build-arg=DNS=$YOUR_DNS_PROVIDER.
 ```
 
 ## Setup three DNS recode to your docker server
@@ -19,19 +28,26 @@ CNAME   production.example.com -> example.com // $YOUR_PRODUCTION_DOMAIN
 ```
 In the next steps, you  need to replace to $YOUR_DOMAIN
 ## Quick Start.
-```bash
+```sh
 $ docker run -d --name=dockerhub-reverse-proxy \
 -p 443:443 -p 80:80 \
 -e DOWNSTREAM=$YOUR_DOMAIN \
 -v ${HOME}/caddy-data:/data \
 dockerhub:latest
 ```
+- - -
+**Tip**
+You can mount the /data volume if you want the cert files.
+-v /path/to/data:/data
+- - -
 If your 443 and 80 ports are already occupied and you cannot apply for an automatic HTTPS certificate,
 you can use the built-in Cloudflare DNS to apply for a HTTPS certificate
 (only supports Cloudflare DNS, you can modify the Dockerfile if you need others).
-```bash
-$ echo "TLS_API_TOKEN=$YOUR_TOKEN" >> /path/to/.env
+
+```sh
 # /path/to/.env should be a regular file
+$ cat /path/to/.env # Write your API_TOKEN in this file
+"TLS_API_TOKEN=$YOUR_TOKEN"
 
 $ docker run -d --name=dockerhub-reverse-proxy \
 -p HTTPS_PORT:443 -p HTTP_PORT:80 \
@@ -62,26 +78,38 @@ ENV DOWNSTREAM_REGISTRY=""
 ENV DOWNSTREAM_AUTH=""
 ENV DOWNSTREAM_PRODUCTION=""
 ```
-```bash
+```sh
 $ docker run -d --name=dockerhub-reverse-proxy \
 -p 443:443 -p 80:80 \
 -e DOWNSTREAM_REGISTRY="$YOUR_REGISTRY_DOMAIN" \
 -e DOWNSTREAM_AUTH="$YOUR_AUTH_DOMAIN" \
 -e DOWNSTREAM_PRODUCTION="$YOUR_PRODUCTION_DOMAIN" \
 -v ${HOME}/caddy-data:/data \
--v /path/to/.env:/config/.env \
 dockerhub:latest
 ```
 ### Custom Dockerhub upstream.
 It is useful when you reach the dockerhub rate limit and deploy a dockerhub-reverse-proxy cloudflare worker
-```bash
+```sh
+$ docker run -d --name=dockerhub-reverse-proxy \
 -p 443:443 -p 80:80 \
 -e DOWNSTREAM="$YOUR_DMIAN" \
 -e UPSTREAM_REGISTRY="$UPSTREAM_REGISTRY_DOMAIN_WITH_HTTPS_SCHEME" \
 -e UPSTREAM_AUTH="$UPSTREAM_AUTH_DOMAIN_WITH_HTTPS_SCHEME" \
 -e UPSTREAM_PRODUCTION="$UPSTREAM_PRODUCTION_DOMAIN_WITH_HTTPS_SCHEME" \
 -v ${HOME}/caddy-data:/data \
--v /path/to/.env:/config/.env \
+dockerhub:latest
+```
+
+### Disable the AutoHTTPS provided by Caddy server
+**Warning: Note that transmitting HTTP traffic on the public network is very dangerous,
+so we disabled HTTP traffic. If you use HTTP, the dockerhub-reverse-proxy will not be successful.
+It is best to enable HTTPS through a front-end reverse proxy.**
+```sh
+docker run -d --name=dockerhub-reverse-proxy \
+-p HTTPS_PORT:443 -p HTTP_PORT:80 \
+-e DOWNSTREAM=$YOUR_DOMAIN \
+-e TLS_METHOD=none  \
+-v ${HOME}/caddy-data:/data \
 dockerhub:latest
 ```
 # Contribute

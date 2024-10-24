@@ -13,8 +13,7 @@ debug()
         echo "Debug: $@";
     fi
 }
-# Load env file.
-# This will override the environment that is passed through by the Docker
+
 source /config/.env
 
 debug $(cat /config/.env)
@@ -23,7 +22,7 @@ if [ -z ${TLS_METHOD} ];then
 	export TLS_METHOD=http;
 fi
 
-if [ "${TLS_METHOD}" != "http" ] && [ "${TLS_METHOD}" != "none" ];then
+if [ "${TLS_METHOD}" != "http" ] && [ "${TLS_METHOD}" != "dns" ] && [ "${TLS_METHOD}" != "none" ];then
 	echo "Unknown TLS_METHOD. Only supported http,dns and none.";
 	exit 1;
 fi;
@@ -49,11 +48,18 @@ fi;
 # Using HTTP protocol in a public network is so dangerous.
 export SCHEME="https"
 
+# Check TLS_METHOD
+if [ "${TLS_METHOD}" = "dns" ] && [ -z "${TLS_API_TOKEN}" ];then
+	echo "You must set TLS_API_TOKEN if you want to use DNS-Challeng method."
+	exit 1;
+fi;
+
 debug "TLS_METHOD=${TLS_METHOD}"
 debug "DOWNSTREAM=${DOWNSTREAM}"
 debug "DOWNSTREAM_REGISTRY=${DOWNSTREAM_REGISTRY}"
 debug "DOWNSTREAM_AUTH=${DOWNSTREAM_AUTH}"
 debug "DOWNSTREAM_PRODUCTION=${DOWNSTREAM_PRODUCTION}"
+debug "TLS_API_TOKEN=${TLS_API_TOKEN}"
 
 TLS_CONFIG_PATH=/caddy.tls.config
 
@@ -66,6 +72,12 @@ HERE
         # do nothing
         :
     fi
+elif [ "${TLS_METHOD}" = "dns" ];then
+    cat<<HERE >> ${TLS_CONFIG_PATH};
+tls {
+    dns cloudflare {$TLS_API_TOKEN}
+}
+HERE
 elif [ "${TLS_METHOD}" = "none" ];then
     cat<<HERE >> ${TLS_CONFIG_PATH}
 auto_https off

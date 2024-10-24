@@ -1,8 +1,17 @@
+FROM caddy:builder AS build
+# Build with cloudflare DNS plugin
+ARG DNS=cloudflare
+RUN xcaddy build --with github.com/caddy-dns/$DNS
+
 FROM caddy:latest AS production
-# http,none
+COPY --from=build /usr/bin/caddy /usr/bin/caddy
+
+# http,dns,none
 # use none to disable auto https.
 ENV TLS_METHOD="http"
 ENV TLS_EMAIL=""
+# Passthrough the DNS token Via /config/.env
+# ENV TLS_API_TOKEN=""
 
 ENV UPSTREAM_REGISTRY="https://registry-1.docker.io"
 ENV UPSTREAM_AUTH="https://auth.docker.io"
@@ -18,7 +27,7 @@ ENV DOWNSTREAM_AUTH=""
 ENV DOWNSTREAM_PRODUCTION=""
 
 COPY Caddyfile /etc/caddy/Caddyfile
-COPY entry.sh /entry.sh
+COPY entry.dns.sh /entry.sh
 RUN <<EOF
 /bin/chmod +x /entry.sh
 EOF
